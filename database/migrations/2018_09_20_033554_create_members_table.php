@@ -20,7 +20,7 @@ class CreateMembersTable extends Migration
             $table->string('username', '20');
             $table->string('email','50')->nullable();
             $table->string('phone', '10')->nullable();
-            $table->integer('token_lifetime');
+            $table->integer('token_lifetime')->nullable();
             $table->string('api_token', 60);
             $table->timestamps();
         });

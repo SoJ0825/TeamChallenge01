@@ -18,16 +18,16 @@ class MembersController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index($id)
+    public function index()
     {
-        $member = Member::all()->find($id);
+//        $member = Member::all()->find($id);
 
-        if (time() - $member->token_lifetime < $this->token_invalid_time)
-        {
-            return $member;
-        } else {
-            return null;
-        }
+//        if (time() - $member->token_lifetime < $this->token_invalid_time )
+//        {
+//            return $member;
+//        } else {
+//            return null;
+//        }
 //        return 'Hi <';
     }
 
@@ -51,18 +51,18 @@ class MembersController extends Controller
     {
         Log::Info($request);
         if(empty($request->account)){
-            return 'account can\'t be empty';
+            return ['status' => 'fail', 'error_message' => "account can't be empty"];
         }
 
         if(empty($request->password)){
-            return 'password can\'t be empty';
+            return ['status' => 'fail', 'error_message' => "password can't be empty"];
         }
 
         $members = Member::all();
 
         foreach ($members as $member) {
             if($request->account == $member->account) {
-                return 'account is exist!';
+                return ['status' => 'fail', 'error_message' => 'account is exist!'];
             }
         }
 
@@ -78,8 +78,7 @@ class MembersController extends Controller
         ]);
         session()->put('account', $request->account);
 
-        Log::Info($request);
-        return 'create success!';
+        return ['status' => 'success', 'data' => $member->toArray()];
     }
 
     /**
@@ -88,19 +87,18 @@ class MembersController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Request $request) //post method
     {
 
-        $member = Member::all()->find($id);
-
-            if (time() - $member->token_lifetime < $this->token_invalid_time)
-            {
-                return $member;
-            } else {
-                return null;
+        if($member = Member::all()->firstWhere('api_token', '=', $request->api_token)) {
+            if (time() - $member->token_lifetime < $this->token_invalid_time) {
+                return ['status' => 'success', 'data' => $member->toArray()];
             }
+            return ['status' => 'fail', 'error_message' => 'Token invalid'];
 
+        }
 
+        return ['status' => 'fail', 'error_message' => 'Please login first!'];
     }
 
 //    public function showFirstData($id)
@@ -150,29 +148,30 @@ class MembersController extends Controller
             if (Hash::check($request->password, $member->password))
             {
 //                session()->put('account', $member->account);
+                $member->api_token = (new Token())->Unique('members', 'api_token', 32);
                 $member->token_lifetime = time();
                 $member->save();
                 $this->user = $member;
-                return $member;
+                return ['status' => 'success', 'data' => $member->toArray()];
+            }
+        }
+        return ['status' => 'fail', 'error_message' => 'Please check your credentials and try again'];
+    }
+
+    public function logout(Request $request)
+    {
+        if ($member = Member::all()->firstWhere('api_token', '=', $request->api_token))
+        {
+
+            if (time() - $member->token_lifetime < $this->token_invalid_time) {
+                $member->api_token = null;
+                $member->token_lifetime = 0;
+                $member->save();
+                return ['status' => 'success'];
             }
         }
 
-        return 'something wrong!';
-//        return $request;
-    }
-
-    public function logout($id)
-    {
-        $member = Member::all()->find($id);
-
-        if (time() - $member->token_lifetime < $this->token_invalid_time)
-        {
-            $member->token_lifetime = 0;
-            $member->save();
-            return 'logout';
-        } else {
-            return 'please login!';
-        }
+        return ['status' => 'fail', 'error_message' => 'Please login first'];
     }
 }
 
